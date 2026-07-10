@@ -13,12 +13,13 @@ datasource db {
 }
 
 model Resume {
-  id             String   @id @default(cuid())
-  originalText   String
-  aiScore        Int?
-  strengths      String[] @default([])
-  weaknesses     String[] @default([])
-  suggestions    String[] @default([])
-  improvedResume String?
-  createdAt      DateTime @default(now())
+  id              String   @id @default(cuid())
+  originalText    String
+  aiScore         Int?
+  strengths       String[] @default([])
+  weaknesses      String[] @default([])
+  missingSections String[] @default([])
+  suggestions     Json     @default("[]")
+  improvedResume  String?
+  createdAt       DateTime @default(now())
 }

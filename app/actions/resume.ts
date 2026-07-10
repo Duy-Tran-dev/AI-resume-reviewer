@@ -3,6 +3,7 @@
 import { getPath } from "pdf-parse/worker";
 import { PDFParse } from "pdf-parse";
 import { prisma } from "@/app/lib/prisma";
+import { analyzeResume } from "@/app/lib/groq";
 
 PDFParse.setWorker(getPath());
 
@@ -56,15 +57,33 @@ export async function uploadResume(
     };
   }
 
+  let resume;
   try {
-    const resume = await prisma.resume.create({
+    resume = await prisma.resume.create({
       data: { originalText: text },
     });
-    return { status: "success", resumeId: resume.id };
   } catch {
     return {
       status: "error",
       message: "Something went wrong saving your resume. Please try again.",
     };
   }
+
+  try {
+    const analysis = await analyzeResume(text);
+    await prisma.resume.update({
+      where: { id: resume.id },
+      data: {
+        aiScore: analysis.score,
+        strengths: analysis.strengths,
+        weaknesses: analysis.weaknesses,
+        missingSections: analysis.missingSections,
+        suggestions: analysis.suggestions,
+      },
+    });
+  } catch (err) {
+    console.error("Resume analysis failed", err);
+  }
+
+  return { status: "success", resumeId: resume.id };
 }
