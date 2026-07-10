@@ -47,6 +47,10 @@ export function ResumeUploadForm() {
 
   const errorMessage =
     clientError ?? (state.status === "error" ? state.message : null);
+  const fileSelectedMessage =
+    selectedFile && !errorMessage && state.status === "idle"
+      ? `${selectedFile.name} selected.`
+      : null;
 
   return (
     <form
@@ -72,6 +76,11 @@ export function ResumeUploadForm() {
         {errorMessage && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {errorMessage}
+          </p>
+        )}
+        {fileSelectedMessage && (
+          <p role="status" className="text-sm text-zinc-600 dark:text-zinc-400">
+            {fileSelectedMessage}
           </p>
         )}
         {state.status === "success" && (
