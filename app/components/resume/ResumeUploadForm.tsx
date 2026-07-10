@@ -83,11 +83,6 @@ export function ResumeUploadForm() {
             {fileSelectedMessage}
           </p>
         )}
-        {state.status === "success" && (
-          <p role="status" className="text-sm text-emerald-600 dark:text-emerald-400">
-            Resume uploaded (id: {state.resumeId}).
-          </p>
-        )}
       </div>
       <button
         type="submit"

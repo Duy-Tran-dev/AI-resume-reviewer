@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { getPath } from "pdf-parse/worker";
 import { PDFParse } from "pdf-parse";
 import { prisma } from "@/app/lib/prisma";
@@ -11,8 +12,7 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 export type UploadResumeState =
   | { status: "idle" }
-  | { status: "error"; message: string }
-  | { status: "success"; resumeId: string };
+  | { status: "error"; message: string };
 
 export async function uploadResume(
   _prevState: UploadResumeState,
@@ -85,5 +85,5 @@ export async function uploadResume(
     console.error("Resume analysis failed", err);
   }
 
-  return { status: "success", resumeId: resume.id };
+  redirect(`/results/${resume.id}`);
 }
