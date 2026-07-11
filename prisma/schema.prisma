@@ -20,6 +20,6 @@ model Resume {
   weaknesses      String[] @default([])
   missingSections String[] @default([])
   suggestions     Json     @default("[]")
-  improvedResume  String?
+  improvedResume  Json?
   createdAt       DateTime @default(now())
 }

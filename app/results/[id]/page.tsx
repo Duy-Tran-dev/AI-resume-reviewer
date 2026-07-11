@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/app/lib/prisma";
 import type { Suggestion } from "@/app/lib/groq";
+import { GenerateImprovedResumeButton } from "@/app/components/resume/GenerateImprovedResumeButton";
 
 const PRIORITY_ORDER: Record<Suggestion["priority"], number> = {
   high: 0,
@@ -90,6 +92,17 @@ export default async function ResultsPage({
             ))}
           </ul>
         </Section>
+
+        {resume.improvedResume ? (
+          <Link
+            href={`/improved/${resume.id}`}
+            className="text-center text-sm font-medium text-zinc-900 underline dark:text-zinc-50"
+          >
+            View improved resume
+          </Link>
+        ) : (
+          <GenerateImprovedResumeButton resumeId={resume.id} />
+        )}
       </div>
     </div>
   );

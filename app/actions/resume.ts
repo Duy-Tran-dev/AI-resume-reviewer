@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { getPath } from "pdf-parse/worker";
 import { PDFParse } from "pdf-parse";
 import { prisma } from "@/app/lib/prisma";
-import { analyzeResume } from "@/app/lib/groq";
+import {
+  analyzeResume,
+  improveResume,
+  type Suggestion,
+  type ImprovedResume,
+} from "@/app/lib/groq";
 
 PDFParse.setWorker(getPath());
 
@@ -86,4 +91,50 @@ export async function uploadResume(
   }
 
   redirect(`/results/${resume.id}`);
+}
+
+export type GenerateImprovedResumeState =
+  | { status: "idle" }
+  | { status: "error"; message: string };
+
+export async function generateImprovedResume(
+  resumeId: string,
+  _prevState: GenerateImprovedResumeState,
+  _formData: FormData,
+): Promise<GenerateImprovedResumeState> {
+  const resume = await prisma.resume.findUnique({ where: { id: resumeId } });
+
+  if (!resume) {
+    return { status: "error", message: "Resume not found." };
+  }
+
+  let improved: ImprovedResume;
+  try {
+    improved = await improveResume(resume.originalText, {
+      strengths: resume.strengths,
+      weaknesses: resume.weaknesses,
+      suggestions: resume.suggestions as Suggestion[],
+    });
+  } catch (err) {
+    console.error("Resume regeneration failed", err);
+    return {
+      status: "error",
+      message: "We couldn't generate an improved resume. Please try again.",
+    };
+  }
+
+  try {
+    await prisma.resume.update({
+      where: { id: resumeId },
+      data: { improvedResume: improved as object },
+    });
+  } catch {
+    return {
+      status: "error",
+      message:
+        "Something went wrong saving the improved resume. Please try again.",
+    };
+  }
+
+  redirect(`/improved/${resumeId}`);
 }
