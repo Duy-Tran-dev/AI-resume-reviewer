@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/app/lib/prisma";
-import type { ImprovedResume } from "@/app/lib/groq";
+import { normalizeImprovedResume } from "@/app/lib/groq";
 import { ImprovedResumeDocument } from "@/app/components/resume/ImprovedResumeDocument";
 
 export async function GET(
@@ -15,7 +15,7 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const improved = resume.improvedResume as unknown as ImprovedResume;
+  const improved = normalizeImprovedResume(resume.improvedResume);
   const buffer = await renderToBuffer(
     <ImprovedResumeDocument resume={improved} />,
   );

@@ -13,14 +13,14 @@ rejected before the interview stage.
 
 - **CS / Software Engineering / IT students** applying for internships or
   entry-level software engineering roles. Single anonymous session per visit -
-  no accounts, no access tiers (see Non-goals).
+  no accounts, no login, no access tiers (see Non-goals).
 
 ## Features
 
 1. **Resume upload** - user uploads a PDF resume on the home page; the server extracts and validates the text and stores it.
 2. **AI resume analysis** *(headline)* - the resume text is sent to Groq/Llama, which evaluates ATS compatibility, structure, formatting, grammar, technical skills, projects, experience, bullet-point quality, and produces an overall score.
 3. **Feedback report** - the Review Results page shows the score, strengths, weaknesses, missing sections, and prioritized improvements, each with a why-it-matters explanation.
-4. **Resume regeneration & download** - the AI rewrites the resume into an improved version - reorganizing, rewriting, and clarifying only, never fabricating experience, projects, skills, achievements, or education - and the Improved Resume page lets the user download it.
+4. **Resume regeneration & download** - the AI rewrites the resume into an improved version - reorganizing, rewriting, and clarifying only, never fabricating experience, projects, skills, achievements, or education - and the Improved Resume page lets the user download it as a PDF.
 5. **Deploy to Vercel** - error handling and UI polish, then deploy the MVP.
 
 Target: analysis and feedback delivered within 15 seconds of upload.
@@ -29,35 +29,55 @@ Target: analysis and feedback delivered within 15 seconds of upload.
 
 ### Resume
 
-- `id` (String, cuid/uuid) - primary key
+Implemented in `prisma/schema.prisma`; this is now the concrete, locked shape.
+
+- `id` (String, cuid) - primary key
 - `originalText` (String) - text extracted from the uploaded PDF
-- `aiScore` (Int) - overall resume score
-- `strengths` (String[]) - list of identified strengths
-- `weaknesses` (String[]) - list of identified weaknesses
-- `suggestions` (String[]) - improvement suggestions
-- `improvedResume` (String) - AI-generated improved resume text
+- `aiScore` (Int, nullable) - overall resume score; null until analysis completes
+- `strengths` (String[]) - identified strengths
+- `weaknesses` (String[]) - identified weaknesses
+- `missingSections` (String[]) - standard resume sections the upload is missing
+- `suggestions` (Json) - array of `Suggestion` (see below); default `[]`
+- `improvedResume` (Json, nullable) - `ImprovedResume` (see below); null until regenerated
 - `createdAt` (DateTime) - upload timestamp
 
-No `User` model - the MVP has no accounts (see Non-goals below).
+No `User` model - the MVP has no accounts (see Non-goals).
 
-> Lock this shape before building feature 2 (AI resume analysis) - it's the
-> record every later feature reads and writes.
-> Open question: the Feedback Report feature also calls for "missing sections"
-> and a "high-priority" flag per improvement, and each recommendation needs its
-> own explanation - the fields above don't distinguish those yet. Resolve
-> whether `suggestions` becomes structured JSON (e.g. `{ text, priority, why }`)
-> or gets split into more columns before `/feature 2`.
+**`Suggestion`** (Zod-validated in `app/lib/groq.ts`):
+`{ text: string, priority: "high" | "medium" | "low", why: string }`
+
+**`ImprovedResume`** (Zod-validated in `app/lib/groq.ts`, rendered by
+`ImprovedResumeDocument.tsx` and `app/improved/[id]/page.tsx`):
+
+```
+{
+  name: string,
+  contact?: { email?, phone?, location?, website? },
+  sections: {
+    heading: string,
+    entries: {
+      title?, subtitle?, location?, dates?,
+      bullets: { lead?: string, text: string }[]
+    }[]
+  }[]
+}
+```
+
+Contact and per-entry fields (location, dates, subtitle) are extracted only when
+present in the source resume - never fabricated, matching the never-invent rule
+for the whole regeneration feature.
 
 ## Tech stack
 
-- **Next.js** - frontend framework (App Router)
+- **Next.js 16** (App Router) - frontend framework and Server Actions
 - **TypeScript** - language, strict mode
-- **Tailwind CSS** - styling
-- **Next.js Route Handlers** - backend API (e.g. `POST /api/review`: accept the PDF, extract text, validate, call Groq, parse the AI response, return structured feedback)
-- **PostgreSQL** - database
-- **Prisma ORM** - data access
-- **Groq API (Llama model)** - resume analysis and regeneration
-- **Vercel** - deployment
+- **Tailwind CSS v4** - styling, CSS-first config
+- **Server Actions** (`app/actions/`) - primary mutation path (upload, regenerate); one Route Handler (`GET /api/resume/[id]/download`) for the binary PDF response a Server Action can't return
+- **PostgreSQL** + **Prisma 7** (`@prisma/adapter-pg` driver adapter) - persistence; client generated to `app/generated/prisma`
+- **Groq API** (Llama 3.3 70B) - resume analysis and regeneration; responses are Zod-validated before use
+- **@react-pdf/renderer** - generates the downloadable improved-resume PDF
+- **pdf-parse** - extracts text from uploaded PDF resumes
+- **Vercel** - deployment (project linked; `npm run build` runs `prisma migrate deploy` before `next build`)
 
 ## Monetization
 
@@ -66,16 +86,17 @@ Not in v1. Non-goals explicitly exclude payments and subscription plans.
 ## UI/UX
 
 - `/` (Home) - explains the app, lets the user upload a resume
-- `/results` (Review Results) - resume score, ATS analysis, feedback, suggested improvements
-- `/improved` (Improved Resume) - AI-generated improved resume, with download
-
-> Route paths are inferred from the three pages described in the plans, not
-> explicitly named there - adjust when `/feature` specs the pages.
+- `/results/[id]` (Review Results) - resume score, ATS analysis, feedback, suggested improvements
+- `/improved/[id]` (Improved Resume) - AI-generated improved resume, entry-structured, with PDF download
 
 ## Open questions
 
-> - Feedback report schema doesn't yet capture "missing sections," per-item
->   priority, or per-item explanations - see the Data model note above.
 > - No stated retention policy for stored resumes. Non-goals exclude a
 >   user-facing "resume history" feature, but the `Resume` table still persists
->   rows server-side - confirm whether that's fine for MVP or needs a TTL/cleanup.
+>   rows server-side indefinitely - confirm whether that's fine for MVP or needs
+>   a TTL/cleanup job.
+> - Build-plan item 5 ("Deploy to Vercel") is checked and a Vercel project is
+>   linked, but there's an active, unmerged fix branch
+>   (`fix/restyle-improved-resume-pdf`) still doing UI polish on the improved-
+>   resume PDF. Confirm whether a production deploy has actually happened, or
+>   whether that's still pending until current polish work lands.

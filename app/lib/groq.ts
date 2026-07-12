@@ -90,18 +90,85 @@ export async function analyzeResume(
   return result.data;
 }
 
+// Models often send "" for a field they mean to omit, instead of leaving the
+// key out entirely - normalize both to undefined rather than rejecting them.
+const optionalString = () =>
+  z
+    .string()
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value : undefined));
+
+const entryBulletSchema = z.object({
+  lead: optionalString(),
+  text: z.string().min(1),
+});
+
+const resumeEntrySchema = z.object({
+  title: optionalString(),
+  subtitle: optionalString(),
+  location: optionalString(),
+  dates: optionalString(),
+  bullets: z.array(entryBulletSchema).default([]),
+});
+
 const resumeSectionSchema = z.object({
   heading: z.string().min(1),
-  bullets: z.array(z.string().min(1)).min(1),
+  entries: z.array(resumeEntrySchema).min(1),
+});
+
+const contactSchema = z.object({
+  email: optionalString(),
+  phone: optionalString(),
+  location: optionalString(),
+  website: optionalString(),
 });
 
 const improveResumeSchema = z.object({
   name: z.string().min(1),
+  contact: contactSchema.optional(),
   sections: z.array(resumeSectionSchema).min(1),
 });
 
+export type ImprovedResumeBullet = z.infer<typeof entryBulletSchema>;
+export type ImprovedResumeEntry = z.infer<typeof resumeEntrySchema>;
 export type ImprovedResumeSection = z.infer<typeof resumeSectionSchema>;
+export type ImprovedResumeContact = z.infer<typeof contactSchema>;
 export type ImprovedResume = z.infer<typeof improveResumeSchema>;
+
+type LegacyImprovedResumeSection = { heading: string; bullets: string[] };
+
+// Converts pre-entries resumes (`{ heading, bullets: string[] }`) into the current shape.
+export function normalizeImprovedResume(raw: unknown): ImprovedResume {
+  const data = raw as {
+    name: string;
+    contact?: ImprovedResumeContact;
+    sections: Array<ImprovedResumeSection | LegacyImprovedResumeSection>;
+  };
+
+  return {
+    name: data.name,
+    contact: data.contact,
+    sections: data.sections.map((section) =>
+      "entries" in section
+        ? section
+        : {
+            heading: section.heading,
+            entries: [
+              {
+                title: undefined,
+                subtitle: undefined,
+                location: undefined,
+                dates: undefined,
+                bullets: section.bullets.map((text) => ({
+                  lead: undefined,
+                  text,
+                })),
+              },
+            ],
+          },
+    ),
+  };
+}
 
 const IMPROVE_SYSTEM_PROMPT = `You are an expert resume writer helping a software engineering student improve their resume.
 
@@ -112,19 +179,41 @@ Rules:
 - NEVER invent experience, projects, skills, achievements, or education that isn't already present in the original resume.
 - Preserve every fact (companies, dates, technologies, metrics) from the original.
 - Improve wording, structure, bullet points, and action verbs.
-- Every section must have at least one bullet point.
+- Bullets are optional per entry - a simple entry like a degree with no elaboration (just title/subtitle/location/dates) can have an empty bullets list. Don't invent bullets to fill it.
+- Extract email, phone, location, and website ONLY if they literally appear in the original resume text. Omit any field that isn't present - never invent a placeholder value. Same rule for each entry's location and dates: omit if not stated, never invent.
+- A section like "Experience" or "Education" usually has multiple entries (one per job or degree) - split them out individually, each with its own title (company or school name), subtitle (role or degree), location, and dates when present in the source.
+- A section like "Skills" or "Projects" without distinct dated entries is fine as a single entry with no title/subtitle/location/dates and just bullets.
+- Where a bullet describes a distinct named thing (a project name, a specific system), put that name in "lead" and the description in "text". Otherwise omit "lead" and put the whole bullet in "text".
 
 Respond with ONLY a single JSON object (no markdown, no code fences, no commentary) matching exactly this shape:
 
 {
   "name": <string, the candidate's name as it appears on the resume>,
+  "contact": {
+    "email": <string, omit this field entirely if no email is present>,
+    "phone": <string, omit this field entirely if no phone number is present>,
+    "location": <string, omit this field entirely if no city/location is present>,
+    "website": <string, omit this field entirely if no personal site/portfolio URL is present>
+  },
   "sections": [
     {
       "heading": <string, e.g. "Education", "Projects", "Experience", "Skills">,
-      "bullets": [<string, one rewritten line or bullet point>]
+      "entries": [
+        {
+          "title": <string, e.g. company or school name - omit if this section has no distinct entries>,
+          "subtitle": <string, e.g. role or degree - omit if not applicable>,
+          "location": <string, omit if not present in the source>,
+          "dates": <string, e.g. "Jan 2024 - Present" - omit if not present in the source>,
+          "bullets": [
+            { "lead": <string, optional bold lead-in term>, "text": <string, the rewritten bullet text> }
+          ]
+        }
+      ]
     }
   ]
-}`;
+}
+
+Omit the "contact" object entirely if none of email, phone, location, or website are present.`;
 
 export async function improveResume(
   originalText: string,

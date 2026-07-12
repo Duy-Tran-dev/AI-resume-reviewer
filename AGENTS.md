@@ -72,13 +72,13 @@ or destructive actions.
 
 ## Commands
 
-For a standard Next.js project. Change or remove if you're using something else.
-
 - Dev server: `npm run dev` (http://localhost:3000)
-- Build: `npm run build`
+- Build: `npm run build` (runs `prisma migrate deploy` first, then `next build`
+  - commit pending migrations before building)
 - Production server: `npm run start`
 - Lint: `npm run lint`
+- Database migration (dev): `npx prisma migrate dev`
 
-Testing is opt-in. If this project does not already have a unit test runner, run
-`/tests` or `$tests` to add one and update this section with the real test
-commands.
+No test runner is configured yet (no test script, no vitest/jest, no test
+files). Testing is opt-in - run `/tests` or `$tests` to add one and update this
+section with the real test commands when that becomes a priority.

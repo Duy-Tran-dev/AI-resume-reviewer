@@ -35,8 +35,11 @@
   - Specific HTTP status codes or headers
   - Endpoints for future mobile/CLI clients
   - Third-party integrations
+  - Binary/streamed responses a Server Action can't return (e.g. `GET
+    /api/resume/[id]/download` renders a PDF via `@react-pdf/renderer` and
+    returns it as `NextResponse`)
 - Otherwise, fetch data directly in server components
-- Dynamic routes for item/collection pages
+- Dynamic routes for item/collection pages (`/results/[id]`, `/improved/[id]`)
 
 ## File Organization
 
@@ -69,22 +72,38 @@ This project uses a root-level `app/` directory (no `src/`), per `tsconfig.json`
 
 ## Database
 
-> TODO: no database or ORM is chosen yet. This project currently has no
-> persistence layer. When one is added (e.g. Prisma), record the migration
-> workflow here.
+- **Prisma 7** with the `@prisma/adapter-pg` driver adapter, against **PostgreSQL**.
+- Client is generated to a custom path, `app/generated/prisma` (not the default
+  `node_modules` location) - import from `@/app/lib/prisma`, never generate a
+  second client elsewhere.
+- One model currently: `Resume` (`prisma/schema.prisma`). Add fields with a real
+  migration (`npx prisma migrate dev`), not by hand-editing the database.
+- `npm run build` runs `prisma migrate deploy` before `next build`, so pending
+  migrations must be committed before a build/deploy.
 
 ## Data Fetching
 
-> TODO: no auth provider is chosen yet. This project currently has no data layer
-> or auth. When both exist, record here how server components fetch data, how
-> client components mutate it, the validation library, and how user-owned
-> queries are scoped to the authenticated user.
+- **No auth provider.** The app is single-session and anonymous by design (see
+  Non-goals in `project-overview.md`) - there is no user model and no scoping to
+  worry about. Don't add an auth layer unless a build-plan item calls for it.
+- Server components fetch directly via `prisma` (e.g.
+  `app/results/[id]/page.tsx`, `app/improved/[id]/page.tsx`).
+- Mutations go through **Server Actions** in `app/actions/`
+  (`"use server"`), called from client components via `useActionState`
+  (e.g. `ResumeUploadForm.tsx`, `GenerateImprovedResumeButton.tsx`).
+- External AI responses (Groq) are validated with **Zod** schemas in
+  `app/lib/groq.ts` before use - never trust raw model JSON.
 
 ## Error Handling
 
-- Use try/catch in Server Actions
-- Return `{ success, data, error }` pattern from actions
-- Display user-friendly error messages via toast
+- Use try/catch in Server Actions and API routes.
+- Server Actions return a discriminated union state consumed by
+  `useActionState`, e.g. `{ status: "idle" } | { status: "error", message }`
+  (see `app/actions/resume.ts`) - not a generic `{ success, data, error }` shape.
+- Log unexpected failures with `console.error` (include a short label, e.g.
+  `"Resume analysis failed"`); return a plain user-facing message in the state,
+  don't leak internals.
+- No toast library is installed - errors render inline from the action state.
 
 ## Testing
 
