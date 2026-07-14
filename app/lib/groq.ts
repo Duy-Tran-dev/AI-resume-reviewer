@@ -54,6 +54,7 @@ async function callGroqJson(messages: ChatMessage[]): Promise<unknown> {
       model: MODEL,
       messages,
       response_format: { type: "json_object" },
+      temperature: 0,
     },
     { timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 },
   );
