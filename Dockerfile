@@ -50,7 +50,12 @@ COPY --from=builder /app/public ./server/public
 COPY --from=builder /app/.next/static ./server/.next/static
 
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh \
+# Strip any CRLF line endings regardless of how this file was checked out -
+# a CRLF shebang line ("#!/bin/sh\r") fails with a confusing "no such file or
+# directory" instead of a clear syntax error, so this is worth guarding
+# unconditionally rather than trusting .gitattributes alone.
+RUN sed -i 's/\r$//' ./docker-entrypoint.sh \
+  && chmod +x ./docker-entrypoint.sh \
   && chown -R nextjs:nodejs /app
 
 USER nextjs
