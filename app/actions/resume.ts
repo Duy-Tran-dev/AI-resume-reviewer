@@ -46,7 +46,11 @@ export async function uploadResume(
       pageJoiner: "",
       parseHyperlinks: true,
     });
-    text = result.text.trim();
+    // Icon-font glyphs (contact icons, bullet markers) can decode to
+    // non-printable control characters, including the null byte, which
+    // Postgres's text type can never store. Strip them; they're never
+    // legitimate resume content.
+    text = result.text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim();
   } catch (err) {
     console.error("PDF parse failed", err);
     return {
@@ -70,7 +74,8 @@ export async function uploadResume(
     resume = await prisma.resume.create({
       data: { originalText: text },
     });
-  } catch {
+  } catch (err) {
+    console.error("Resume save failed", err);
     return {
       status: "error",
       message: "Something went wrong saving your resume. Please try again.",
