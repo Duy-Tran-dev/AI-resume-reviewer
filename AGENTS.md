@@ -78,6 +78,12 @@ or destructive actions.
 - Production server: `npm run start`
 - Lint: `npm run lint`
 - Database migration (dev): `npx prisma migrate dev`
+- Docker image: `docker build -t my-app .` (builds the standalone production
+  image; `prisma migrate deploy` runs at container start, not at build time)
+- Docker Compose (local dev, app + Postgres): `docker compose up --build`
+  (http://localhost:3000; needs `GROQ_API_KEY` set in `.env` - Compose reads it
+  automatically; the containerized Postgres is separate from the `DATABASE_URL`
+  in `.env`, which stays pointed at the real database for `npm run dev`)
 
 No test runner is configured yet (no test script, no vitest/jest, no test
 files). Testing is opt-in - run `/tests` or `$tests` to add one and update this
