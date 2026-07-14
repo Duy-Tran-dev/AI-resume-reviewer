@@ -42,6 +42,7 @@ export default async function ImprovedResumePage({
     improved.contact?.email,
     improved.contact?.phone,
     improved.contact?.location,
+    improved.contact?.website,
   ].filter((value): value is string => Boolean(value));
 
   return (
@@ -72,11 +73,6 @@ export default async function ImprovedResumePage({
               <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
                 {improved.name}
               </h2>
-              {improved.contact?.website && (
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {improved.contact.website}
-                </p>
-              )}
             </div>
             {contactLines.length > 0 && (
               <div className="text-right text-xs text-zinc-500 dark:text-zinc-400">

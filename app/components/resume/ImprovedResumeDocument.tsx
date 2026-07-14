@@ -22,10 +22,6 @@ const styles = StyleSheet.create({
     fontFamily: "Times-Bold",
     fontSize: 20,
   },
-  website: {
-    fontSize: 9,
-    marginTop: 2,
-  },
   contactRight: {
     fontSize: 9,
     textAlign: "right",
@@ -191,6 +187,7 @@ export function ImprovedResumeDocument({
     resume.contact?.email,
     resume.contact?.phone,
     resume.contact?.location,
+    resume.contact?.website,
   ].filter((value): value is string => Boolean(value));
 
   return (
@@ -199,9 +196,6 @@ export function ImprovedResumeDocument({
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.name}>{resume.name}</Text>
-            {resume.contact?.website && (
-              <Text style={styles.website}>{resume.contact.website}</Text>
-            )}
           </View>
           {contactRight.length > 0 && (
             <View>
