@@ -42,7 +42,10 @@ export async function uploadResume(
 
   let text: string;
   try {
-    const result = await parser.getText({ pageJoiner: "" });
+    const result = await parser.getText({
+      pageJoiner: "",
+      parseHyperlinks: true,
+    });
     text = result.text.trim();
   } catch (err) {
     console.error("PDF parse failed", err);

@@ -181,6 +181,7 @@ Rules:
 - Improve wording, structure, bullet points, and action verbs.
 - Bullets are optional per entry - a simple entry like a degree with no elaboration (just title/subtitle/location/dates) can have an empty bullets list. Don't invent bullets to fill it.
 - Extract email, phone, location, and website ONLY if they literally appear in the original resume text. Omit any field that isn't present - never invent a placeholder value. Same rule for each entry's location and dates: omit if not stated, never invent.
+- Contact info may appear as a Markdown link, "[label](url)", where the visible label is meaningless (an icon glyph the PDF extractor couldn't read) but the url is real. Treat the url as the actual value: for email, strip a leading "mailto:"; for website/GitHub/LinkedIn-style links, use the url as-is. Still only extract what's literally present this way - never invent a url.
 - A section like "Experience" or "Education" usually has multiple entries (one per job or degree) - split them out individually, each with its own title (company or school name), subtitle (role or degree), location, and dates when present in the source.
 - A section like "Skills" or "Projects" without distinct dated entries is fine as a single entry with no title/subtitle/location/dates and just bullets.
 - Where a bullet describes a distinct named thing (a project name, a specific system), put that name in "lead" and the description in "text". Otherwise omit "lead" and put the whole bullet in "text".
